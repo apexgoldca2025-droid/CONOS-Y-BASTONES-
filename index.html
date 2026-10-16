@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador Interactivo: Conos y Bastones de la Retina</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.3; transform: scale(0.98); }
+      50% { opacity: 0.8; transform: scale(1.02); }
+    }
+    .glow-effect {
+      animation: pulse-glow 3s infinite ease-in-out;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1f2937;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #4b5563;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col justify-between custom-scrollbar">
+
+  <!-- Encabezado / Header -->
+  <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
+    <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-indigo-600 rounded-lg shadow-lg shadow-indigo-500/30">
+          <i data-lucide="eye" class="w-7 h-7 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Explorador de la Retina
+          </h1>
+          <p class="text-xs text-slate-400">¿Cómo vemos la luz y el color? (Conos vs. Bastones)</p>
+        </div>
+      </div>
+      
+      <!-- Navegación entre secciones -->
+      <nav class="flex bg-slate-800 p-1 rounded-xl border border-slate-700 text-xs sm:text-sm">
+        <button onclick="switchTab('sim')" id="tab-sim" class="px-3 py-1.5 rounded-lg font-medium transition-all bg-indigo-600 text-white shadow">
+          <i data-lucide="sliders" class="w-4 h-4 inline mr-1"></i> Simulador
+        </button>
+        <button onclick="switchTab('games')" id="tab-games" class="px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white">
+          <i data-lucide="gamepad-2" class="w-4 h-4 inline mr-1"></i> Desafíos
+        </button>
+        <button onclick="switchTab('theory')" id="tab-theory" class="px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white">
+          <i data-lucide="book-open" class="w-4 h-4 inline mr-1"></i> Teoría Explicativa
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Contenido Principal -->
+  <main class="max-w-6xl mx-auto p-4 sm:p-6 w-full flex-grow">
+
+    <!-- SECCIÓN 1: SIMULADOR -->
+    <div id="section-sim" class="space-y-6">
+      
+      <!-- Control de Iluminación y Visión -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+          <div>
+            <h2 class="text-lg font-semibold flex items-center gap-2 text-indigo-300">
+              <i data-lucide="sun-moon" class="w-5 h-5"></i> Nivel de Iluminación
+            </h2>
+            <p class="text-xs text-slate-400">Desliza para cambiar la cantidad de luz y ver cómo reaccionan tus ojos.</p>
+          </div>
+
+          <!-- Selector de Daltonismo -->
+          <div class="flex items-center gap-2 bg-slate-800 p-2 rounded-lg border border-slate-700">
+            <i data-lucide="palette" class="w-4 h-4 text-pink-400"></i>
+            <span class="text-xs text-slate-300 font-medium">Filtro de Visión:</span>
+            <select id="colorFilter" onchange="updateSimulation()" class="bg-slate-900 text-xs text-slate-200 border border-slate-700 rounded px-2 py-1 outline-none focus:border-indigo-500">
+              <option value="normal">Normal (Tridimencional)</option>
+              <option value="protanopia">Protanopía (Sin Conos Rojos)</option>
+              <option value="deuteranopia">Deuteranopía (Sin Conos Verdes)</option>
+              <option value="tritanopia">Tritanopía (Sin Conos Azules)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Slider de Luz -->
+        <div class="relative mb-6">
+          <input type="range" id="lightSlider" min="0" max="100" value="80" oninput="updateSimulation()" 
+                 class="w-full h-3 bg-gradient-to-r from-slate-950 via-slate-700 to-amber-200 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+          <div class="flex justify-between text-xs font-semibold text-slate-400 mt-2">
+            <span class="flex items-center gap-1 text-slate-400"><i data-lucide="moon" class="w-3 h-3"></i> Noche Oscura (Bastones Activos)</span>
+            <span class="flex items-center gap-1 text-amber-400"><i data-lucide="sun" class="w-3 h-3"></i> Día Brillante (Conos Activos)</span>
+          </div>
+        </div>
+
+        <!-- Indicador de Fotorreceptores Dominantes -->
+        <div class="grid grid-cols-2 gap-4 text-center">
+          <div id="rodsCard" class="p-3 rounded-xl border transition-all bg-slate-800/50 border-slate-700">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Bastones (Visión Escotópica)</div>
+            <div id="rodsActivity" class="text-lg font-extrabold text-slate-200 mt-1">Actividad: 20%</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Visión periférica, blanco/negro, nocturna</div>
+          </div>
+          <div id="conesCard" class="p-3 rounded-xl border transition-all bg-indigo-950/40 border-indigo-500/50">
+            <div class="text-xs font-bold uppercase tracking-wider text-indigo-400">Conos (Visión Fotópica)</div>
+            <div id="conesActivity" class="text-lg font-extrabold text-indigo-300 mt-1">Actividad: 80%</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Detalles, colores (RGB), visión central</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pantalla de la Vista / Canvas -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Canvas de la Escena -->
+        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center">
+          <h3 class="text-sm font-semibold text-slate-300 mb-3 w-full flex justify-between items-center">
+            <span><i data-lucide="eye" class="w-4 h-4 inline mr-1 text-indigo-400"></i> Lo que procesa el Ojo:</span>
+            <span id="visionTypeLabel" class="text-xs font-mono text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800">Visión a Color (Fotópica)</span>
+          </h3>
+          <div class="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-800 bg-black">
+            <canvas id="viewCanvas" class="w-full h-full block"></canvas>
+            <!-- Punto foveal flotante -->
+            <div class="absolute top-2 right-2 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] border border-slate-800 text-slate-400">
+              Fóvea = Máxima densidad de conos
+            </div>
+          </div>
+        </div>
+
+        <!-- Animación de Fotorreceptores (Microscopio) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col">
+          <h3 class="text-sm font-semibold text-slate-300 mb-2 flex items-center gap-2">
+            <i data-lucide="microscope" class="w-4 h-4 text-purple-400"></i> A nivel celular (Microscopio)
+          </h3>
+          <p class="text-xs text-slate-400 mb-3">Observa los fotones (puntos de luz) estimulando la retina y enviando impulsos nerviosos.</p>
+          
+          <div class="relative flex-grow min-h-[220px] rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
+            <canvas id="retinaCanvas" class="w-full h-full block"></canvas>
+          </div>
+
+          <!-- Leyenda -->
+          <div class="grid grid-cols-2 gap-1.5 mt-3 text-[11px]">
+            <div class="flex items-center gap-1.5 text-slate-300"><span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span> Bastón (Sensible)</div>
+            <div class="flex items-center gap-1.5 text-red-400"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> Cono L (Rojo)</div>
+            <div class="flex items-center gap-1.5 text-green-400"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> Cono M (Verde)</div>
+            <div class="flex items-center gap-1.5 text-blue-400"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> Cono S (Azul)</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- SECCIÓN 2: DESAFÍOS Y JUEGOS -->
+    <div id="section-games" class="hidden space-y-6">
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- JUEGO 1: Detector de Bastones -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <i data-lucide="sparkles" class="w-5 h-5 text-amber-400"></i> Detector Periférico (Bastones)
+              </h3>
+              <span class="text-xs bg-indigo-950 border border-indigo-800 text-indigo-300 px-2 py-0.5 rounded-full">Experimento</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">
+              Los bastones son hiper-sensibles al movimiento en la <b>visión periférica</b> pero no detectan color.
+              <br><br>
+              <b>Regla:</b> Mantén la mirada fija en el <b>PUNTO ROJO CENTRAL</b>. Intenta detectar de qué lado aparece un destello fugaz usando solo tu visión periférica.
+            </p>
+
+            <div class="relative w-full h-48 bg-black rounded-xl border border-slate-800 flex items-center justify-center overflow-hidden mb-4" id="rodGameBox">
+              <!-- Punto rojo central -->
+              <div class="w-4 h-4 bg-red-600 rounded-full shadow-lg shadow-red-500/50 z-10 animate-pulse"></div>
+              <!-- Objeto fugaz -->
+              <div id="peripheralTarget" class="absolute w-3 h-3 bg-slate-200 rounded-full opacity-0 transition-opacity duration-100"></div>
+            </div>
+          </div>
+
+          <div>
+            <div id="game1Feedback" class="text-center text-xs font-semibold mb-3 h-4 text-slate-400">Haz clic en Iniciar para comenzar</div>
+            <div class="flex gap-2">
+              <button onclick="startRodGame()" id="startRodBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs py-2 rounded-lg transition">
+                Iniciar Prueba Nocturna
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- JUEGO 2: Test de Discriminación de Conos -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+          <div>
+            <div class="flex justify-between items-start mb-3">
+              <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <i data-lucide="eye" class="w-5 h-5 text-pink-400"></i> Test de Conos (Color)
+              </h3>
+              <span class="text-xs bg-pink-950 border border-pink-800 text-pink-300 px-2 py-0.5 rounded-full">Test Ishihara</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">
+              Los conos necesitan luz para diferenciar pequeños matices cromáticos. Encuentra el círculo que tiene una tonalidad ligeramente distinta a los demás.
+            </p>
+
+            <!-- Cuadrícula de Color -->
+            <div class="relative w-full aspect-square max-w-[200px] mx-auto bg-slate-950 p-2 rounded-xl border border-slate-800 grid grid-cols-3 gap-2 mb-4" id="colorGrid">
+              <!-- Círculos dinámicos -->
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs text-slate-400 mb-2">
+              <span>Puntuación: <b id="coneScore" class="text-slate-200">0</b></span>
+              <span>Nivel: <b id="coneLevel" class="text-pink-400">1</b></span>
+            </div>
+            <button onclick="initConeGame()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs py-2 rounded-lg border border-slate-700 transition">
+              Reiniciar Test de Color
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- SECCIÓN 3: TEORÍA EXPLICATIVA (Para la Exposición) -->
+    <div id="section-theory" class="hidden space-y-6">
+      
+      <!-- Resumen rápido -->
+      <div class="bg-gradient-to-r from-indigo-900/40 via-purple-900/40 to-slate-900 border border-indigo-800/50 rounded-2xl p-6 text-center">
+        <h2 class="text-xl font-bold text-indigo-200 mb-2">¿Cómo funciona la visión en la Retina?</h2>
+        <p class="text-sm text-slate-300 max-w-3xl mx-auto">
+          La retina es el "sensor" en el fondo de nuestro ojo. Contiene unos <b>125 millones de células fotorreceptoras</b> encargadas de transformar la luz en señales eléctricas para el cerebro. Se dividen en dos grupos principales: <b>Bastones</b> y <b>Conos</b>.
+        </p>
+      </div>
+
+      <!-- Tarjetas Comparativas -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Bastones -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
+          <div class="w-2 h-full bg-slate-500 absolute top-0 left-0"></div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="p-3 bg-slate-800 rounded-xl border border-slate-700 text-slate-300">
+              <i data-lucide="moon" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-100">Los Bastones</h3>
+              <span class="text-xs text-slate-400">Especialistas de la Noche y la Periferia</span>
+            </div>
+          </div>
+
+          <ul class="space-y-3 text-xs text-slate-300">
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-slate-400 shrink-0 mt-0.5"></i>
+              <span><b>Cantidad:</b> ~120 millones (representan la inmensa mayoría de fotorreceptores).</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-slate-400 shrink-0 mt-0.5"></i>
+              <span><b>Sensibilidad:</b> Extremadamente alta. Pueden activarse incluso con un solo fotón de luz.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-slate-400 shrink-0 mt-0.5"></i>
+              <span><b>Visión:</b> Blanco, negro y tonos de gris. Sin detalles precisos.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-slate-400 shrink-0 mt-0.5"></i>
+              <span><b>Ubicación:</b> Distribuidos por los bordes de la retina (Visión Periférica).</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Conos -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
+          <div class="w-2 h-full bg-indigo-500 absolute top-0 left-0"></div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="p-3 bg-indigo-950 rounded-xl border border-indigo-800 text-indigo-400">
+              <i data-lucide="sun" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-100">Los Conos</h3>
+              <span class="text-xs text-indigo-300">Especialistas del Color y la Alta Definición</span>
+            </div>
+          </div>
+
+          <ul class="space-y-3 text-xs text-slate-300">
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400 shrink-0 mt-0.5"></i>
+              <span><b>Cantidad:</b> ~6 a 7 millones.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400 shrink-0 mt-0.5"></i>
+              <span><b>Tipos:</b> Hay 3 tipos principales según la longitud de onda de luz:
+                <br>• <b>Rojo (L):</b> Ondas largas.
+                <br>• <b>Verde (M):</b> Ondas medianas.
+                <br>• <b>Azul (S):</b> Ondas cortas.
+              </span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400 shrink-0 mt-0.5"></i>
+              <span><b>Sensibilidad:</b> Requieren mucha iluminación (se desactivan en la oscuridad).</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400 shrink-0 mt-0.5"></i>
+              <span><b>Ubicación:</b> Concentrados en la centro de la retina (la <b>Fóvea</b>).</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- Cuadro resumido para la exposición -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h3 class="text-base font-bold text-slate-200 mb-4 flex items-center gap-2">
+          <i data-lucide="help-circle" class="w-5 h-5 text-indigo-400"></i> Preguntas Típicas para la Exposición
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div class="font-bold text-indigo-300 mb-1">¿Por qué de noche no vemos colores?</div>
+            <p class="text-slate-400">Porque la luz tenue nocturna no es suficiente para activar los conos. Solo los bastones funcionan en la penumbra, y ellos no procesan color.</p>
+          </div>
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div class="font-bold text-indigo-300 mb-1">¿Qué es la Fóvea?</div>
+            <p class="text-slate-400">Es una zona diminuta en el centro de la retina con la mayor concentración de conos del ojo. Allí obtenemos nuestra visión más nítida y detallada.</p>
+          </div>
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+            <div class="font-bold text-indigo-300 mb-1">¿Qué causa el Daltonismo?</div>
+            <p class="text-slate-400">Ocurre cuando uno o más de los 3 tipos de conos no funcionan correctamente o faltan por motivos genéticos.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Pie de página con créditos -->
+  <footer class="bg-slate-900 border-t border-slate-800 py-4 text-center text-xs text-slate-400">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+      <p>Simulador Educativo de Anatomía Ocular &copy; 2026</p>
+      <p class="font-semibold text-slate-200 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+        Creado por Alfredo Belandria
+      </p>
+    </div>
+  </footer>
+
+  <!-- LÓGICA EN JAVASCRIPT -->
+  <script>
+    // Inicializar Lucide Icons
+    lucide.createIcons();
+
+    // --- CAMBIO DE PESTAÑAS ---
+    function switchTab(tabId) {
+      document.getElementById('section-sim').classList.add('hidden');
+      document.getElementById('section-games').classList.add('hidden');
+      document.getElementById('section-theory').classList.add('hidden');
+
+      document.getElementById('tab-sim').className = "px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white";
+      document.getElementById('tab-games').className = "px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white";
+      document.getElementById('tab-theory').className = "px-3 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white";
+
+      document.getElementById('section-' + tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('tab-' + tabId);
+      activeBtn.className = "px-3 py-1.5 rounded-lg font-medium transition-all bg-indigo-600 text-white shadow";
+
+      if(tabId === 'games' && !coneGameInitialized) {
+        initConeGame();
+      }
+    }
+
+    // --- LÓGICA DEL SIMULADOR ---
+    const viewCanvas = document.getElementById('viewCanvas');
+    const viewCtx = viewCanvas.getContext('2d');
+    const retinaCanvas = document.getElementById('retinaCanvas');
+    const retinaCtx = retinaCanvas.getContext('2d');
+
+    // Redimensionar Canvas
+    function resizeCanvases() {
+      const vRect = viewCanvas.parentElement.getBoundingClientRect();
+      viewCanvas.width = vRect.width;
+      viewCanvas.height = vRect.height;
+
+      const rRect = retinaCanvas.parentElement.getBoundingClientRect();
+      retinaCanvas.width = rRect.width;
+      retinaCanvas.height = rRect.height;
+
+      renderViewCanvas();
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+    // Renderizar Paisaje
+    function renderViewCanvas() {
+      if(!viewCanvas.width) return;
+      const w = viewCanvas.width;
+      const h = viewCanvas.height;
+      const lightVal = parseInt(document.getElementById('lightSlider').value);
+      const lightRatio = lightVal / 100;
+      const filter = document.getElementById('colorFilter').value;
+
+      // Limpiar
+      viewCtx.clearRect(0, 0, w, h);
+
+      // Dibujar Escena Original en buffer en memoria
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = w;
+      offCanvas.height = h;
+      const ctx = offCanvas.getContext('2d');
+
+      // Cielo
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.6);
+      skyGrad.addColorStop(0, `rgb(${Math.floor(135 * lightRatio)}, ${Math.floor(206 * lightRatio)}, ${Math.floor(235 * lightRatio)})`);
+      skyGrad.addColorStop(1, `rgb(${Math.floor(255 * lightRatio)}, ${Math.floor(220 * lightRatio)}, ${Math.floor(180 * lightRatio)})`);
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, w, h * 0.6);
+
+      // Sol / Luna
+      ctx.beginPath();
+      ctx.arc(w * 0.75, h * 0.25, 25, 0, Math.PI * 2);
+      ctx.fillStyle = lightRatio > 0.3 ? `rgba(255, 220, 100, ${lightRatio})` : 'rgba(240, 240, 255, 0.9)';
+      ctx.fill();
+
+      // Montañas al fondo
+      ctx.fillStyle = `rgb(${Math.floor(80 * lightRatio)}, ${Math.floor(120 * lightRatio)}, ${Math.floor(90 * lightRatio)})`;
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.6);
+      ctx.lineTo(w * 0.3, h * 0.35);
+      ctx.lineTo(w * 0.6, h * 0.6);
+      ctx.lineTo(w * 0.8, h * 0.4);
+      ctx.lineTo(w, h * 0.6);
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.fill();
+
+      // Flores coloridas en primer plano (Prueba para conos)
+      const flowers = [
+        {x: w*0.15, y: h*0.8, r: 12, color: 'rgb(239, 68, 68)'},  // Rojo
+        {x: w*0.35, y: h*0.85, r: 14, color: 'rgb(59, 130, 246)'}, // Azul
+        {x: w*0.55, y: h*0.78, r: 10, color: 'rgb(234, 179, 8)'},  // Amarillo
+        {x: w*0.75, y: h*0.83, r: 15, color: 'rgb(168, 85, 247)'}, // Púrpura
+      ];
+
+      // Pasto
+      ctx.fillStyle = `rgb(${Math.floor(34 * lightRatio)}, ${Math.floor(139 * lightRatio)}, ${Math.floor(34 * lightRatio)})`;
+      ctx.fillRect(0, h * 0.6, w, h * 0.4);
+
+      // Dibujar Flores
+      flowers.forEach(f => {
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r, 0, Math.PI*2);
+        ctx.fillStyle = f.color;
+        ctx.fill();
+        // Centro
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r * 0.3, 0, Math.PI*2);
+        ctx.fillStyle = '#fde047';
+        ctx.fill();
+      });
+
+      // PROCESAR EFECTO DE BASTONES / CONOS (Escala de grises por poca luz + Daltonismo)
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        let r = data[i];
+        let g = data[i+1];
+        let b = data[i+2];
+
+        // Aplicar daltonismo simulado si está activado
+        if (filter === 'protanopia') {
+          r = 0.56 * r + 0.43 * g;
+        } else if (filter === 'deuteranopia') {
+          g = 0.49 * r + 0.5 * g;
+        } else if (filter === 'tritanopia') {
+          b = 0.5 * g + 0.47 * b;
+        }
+
+        // Factor de visión nocturna (Transición de Conos a Bastones)
+        // En oscuridad (lightRatio -> 0), la imagen pierde color y pasa a grises
+        const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+        const colorWeight = Math.pow(lightRatio, 1.5); // Pérdida no lineal del color
+
+        data[i]     = r * colorWeight + luminance * (1 - colorWeight);
+        data[i + 1] = g * colorWeight + luminance * (1 - colorWeight);
+        data[i + 2] = b * colorWeight + luminance * (1 - colorWeight);
+      }
+
+      viewCtx.putImageData(imgData, 0, 0);
+    }
+
+    // Actualizar datos del Simulador
+    function updateSimulation() {
+      const lightVal = parseInt(document.getElementById('lightSlider').value);
+      const conesPct = lightVal;
+      const rodsPct = 100 - lightVal;
+
+      document.getElementById('conesActivity').innerText = `Actividad: ${conesPct}%`;
+      document.getElementById('rodsActivity').innerText = `Actividad: ${rodsPct}%`;
+
+      const label = document.getElementById('visionTypeLabel');
+      if (lightVal > 60) {
+        label.innerText = "Visión a Color (Fotópica)";
+        label.className = "text-xs font-mono text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800";
+      } else if (lightVal > 25) {
+        label.innerText = "Visión Crepuscular (Mesópica)";
+        label.className = "text-xs font-mono text-amber-400 bg-amber-950 px-2 py-0.5 rounded border border-amber-800";
+      } else {
+        label.innerText = "Visión Nocturna / Grises (Escotópica)";
+        label.className = "text-xs font-mono text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700";
+      }
+
+      renderViewCanvas();
+    }
+
+    // --- ANIMACIÓN RETINIANA (MICROSCOPIO DE CÉLULAS) ---
+    let photons = [];
+    let impulses = [];
+
+    function initRetinaAnimation() {
+      for(let i = 0; i < 20; i++) {
+        photons.push({
+          x: Math.random() * retinaCanvas.width,
+          y: Math.random() * (retinaCanvas.height * 0.4),
+          speed: 1 + Math.random() * 2
+        });
+      }
+    }
+
+    function drawRetinaAnimation() {
+      if(!retinaCanvas.width) return;
+      const w = retinaCanvas.width;
+      const h = retinaCanvas.height;
+      const lightVal = parseInt(document.getElementById('lightSlider').value);
+
+      retinaCtx.clearRect(0, 0, w, h);
+
+      // Dibujar Capa Nerviosa Abajo
+      retinaCtx.fillStyle = '#1e1b4b';
+      retinaCtx.fillRect(0, h - 25, w, 25);
+      retinaCtx.fillStyle = '#6366f1';
+      retinaCtx.font = '9px sans-serif';
+      retinaCtx.fillText('HACIA EL NERVIO ÓPTICO ➔ CEREBRO', 10, h - 10);
+
+      // Fotorreceptores (Representación de bastones y conos)
+      const totalCells = 8;
+      const spacing = w / (totalCells + 1);
+
+      for (let i = 1; i <= totalCells; i++) {
+        const cx = spacing * i;
+        const cy = h * 0.6;
+        const isRod = i % 2 === 0;
+
+        // Cuerpo de la célula
+        retinaCtx.beginPath();
+        retinaCtx.rect(cx - 6, cy - 30, 12, 40);
+        
+        if (isRod) {
+          // Bastón
+          retinaCtx.fillStyle = lightVal < 50 ? '#94a3b8' : '#475569';
+        } else {
+          // Cono (Rojo, Verde, Azul)
+          if(i === 1 || i === 7) retinaCtx.fillStyle = lightVal >= 30 ? '#ef4444' : '#7f1d1d';
+          else if(i === 3) retinaCtx.fillStyle = lightVal >= 30 ? '#22c55e' : '#14532d';
+          else retinaCtx.fillStyle = lightVal >= 30 ? '#3b82f6' : '#1e3a8a';
+        }
+        retinaCtx.fill();
+        retinaCtx.strokeStyle = '#0f172a';
+        retinaCtx.stroke();
+
+        // Punta receptora
+        retinaCtx.beginPath();
+        retinaCtx.arc(cx, cy - 30, 6, Math.PI, 0);
+        retinaCtx.fill();
+
+        // Disparo de impulso si hay luz suficiente
+        if (Math.random() < (isRod ? (100 - lightVal)/200 + 0.05 : lightVal/200)) {
+          impulses.push({ x: cx, y: cy + 10, speed: 2 });
+        }
+      }
+
+      // Caída de Fotones (Luz)
+      retinaCtx.fillStyle = '#fef08a';
+      const maxPhotons = Math.floor((lightVal / 100) * 25) + 2;
+      
+      for(let i = 0; i < maxPhotons; i++) {
+        if(!photons[i]) {
+          photons[i] = { x: Math.random() * w, y: 0, speed: 1 + Math.random() * 2 };
+        }
+        let p = photons[i];
+        p.y += p.speed;
+        if(p.y > h * 0.5) {
+          p.y = 0;
+          p.x = Math.random() * w;
+        }
+
+        retinaCtx.beginPath();
+        retinaCtx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        retinaCtx.fill();
+      }
+
+      // Dibujar Impulsos Eléctricos saliendo
+      retinaCtx.fillStyle = '#a855f7';
+      for(let i = impulses.length - 1; i >= 0; i--) {
+        let imp = impulses[i];
+        imp.y += imp.speed;
+
+        retinaCtx.beginPath();
+        retinaCtx.arc(imp.x, imp.y, 3, 0, Math.PI * 2);
+        retinaCtx.fill();
+
+        if(imp.y > h - 25) {
+          impulses.splice(i, 1);
+        }
+      }
+
+      requestAnimationFrame(drawRetinaAnimation);
+    }
+
+
+    // --- JUEGO 1: DETECTOR PERIFÉRICO ---
+    let rodGameTimer = null;
+    let targetSide = '';
+
+    function startRodGame() {
+      const target = document.getElementById('peripheralTarget');
+      const feedback = document.getElementById('game1Feedback');
+      const box = document.getElementById('rodGameBox');
+
+      feedback.innerText = "¡Atención! Mantén tus ojos en el PUNTO ROJO...";
+      feedback.className = "text-center text-xs font-semibold mb-3 h-4 text-amber-400";
+      target.style.opacity = '0';
+
+      clearTimeout(rodGameTimer);
+      const delay = 1500 + Math.random() * 2500;
+
+      rodGameTimer = setTimeout(() => {
+        const isLeft = Math.random() > 0.5;
+        targetSide = isLeft ? 'left' : 'right';
+        
+        target.style.left = isLeft ? '15%' : '85%';
+        target.style.top = '50%';
+        target.style.opacity = '0.7';
+
+        feedback.innerText = "¿De qué lado apareció el destello fugaz?";
+        feedback.className = "text-center text-xs font-semibold mb-3 h-4 text-indigo-300";
+
+        // Ocultar destello rápido
+        setTimeout(() => {
+          target.style.opacity = '0';
+        }, 300);
+
+      }, delay);
+    }
+
+    // Detectar clics en la caja para la respuesta del juego periférico
+    document.getElementById('rodGameBox').addEventListener('click', (e) => {
+      if(!targetSide) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickedSide = clickX < rect.width / 2 ? 'left' : 'right';
+
+      const feedback = document.getElementById('game1Feedback');
+      if(clickedSide === targetSide) {
+        feedback.innerText = "¡Correcto! Tus bastones detectaron el movimiento periférico. 🎉";
+        feedback.className = "text-center text-xs font-semibold mb-3 h-4 text-green-400";
+      } else {
+        feedback.innerText = "Fallaste. Intenta no mover la vista del centro rojo.";
+        feedback.className = "text-center text-xs font-semibold mb-3 h-4 text-red-400";
+      }
+      targetSide = '';
+    });
+
+
+    // --- JUEGO 2: TEST DE CONOS (COLOR) ---
+    let coneScore = 0;
+    let coneLevel = 1;
+    let oddIndex = -1;
+    let coneGameInitialized = false;
+
+    function initConeGame() {
+      coneGameInitialized = true;
+      coneScore = 0;
+      coneLevel = 1;
+      document.getElementById('coneScore').innerText = coneScore;
+      document.getElementById('coneLevel').innerText = coneLevel;
+      generateColorGrid();
+    }
+
+    function generateColorGrid() {
+      const grid = document.getElementById('colorGrid');
+      grid.innerHTML = '';
+
+      // Color base aleatorio
+      const baseHue = Math.floor(Math.random() * 360);
+      const baseSat = 70 + Math.floor(Math.random() * 20);
+      const baseLight = 45 + Math.floor(Math.random() * 20);
+
+      // La diferencia cromática disminuye con cada nivel
+      const diff = Math.max(3, 25 - coneLevel * 2);
+      oddIndex = Math.floor(Math.random() * 9);
+
+      for (let i = 0; i < 9; i++) {
+        const circle = document.createElement('div');
+        circle.className = "w-full h-full rounded-full cursor-pointer transition-transform hover:scale-105 shadow-inner";
+        
+        if (i === oddIndex) {
+          circle.style.backgroundColor = `hsl(${baseHue}, ${baseSat}%, ${baseLight + diff}%)`;
+        } else {
+          circle.style.backgroundColor = `hsl(${baseHue}, ${baseSat}%, ${baseLight}%)`;
+        }
+
+        circle.onclick = () => handleConeClick(i);
+        grid.appendChild(circle);
+      }
+    }
+
+    function handleConeClick(index) {
+      if (index === oddIndex) {
+        coneScore += 10;
+        coneLevel += 1;
+        document.getElementById('coneScore').innerText = coneScore;
+        document.getElementById('coneLevel').innerText = coneLevel;
+        generateColorGrid();
+      } else {
+        alert(`¡Test finalizado! Alcanzaste el Nivel ${coneLevel}. Tus conos demostraron una excelente agudeza visual.`);
+        initConeGame();
+      }
+    }
+
+    // Inicialización al cargar
+    window.onload = () => {
+      resizeCanvases();
+      updateSimulation();
+      initRetinaAnimation();
+      drawRetinaAnimation();
+    };
+  </script>
+</body>
+</html>
